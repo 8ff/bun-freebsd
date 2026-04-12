@@ -10,9 +10,38 @@ cd bun-freebsd
 sh build.sh
 ```
 
-Requires FreeBSD 13.2+ amd64, ~16 GB RAM, ~20 GB disk. Takes ~15 minutes on 16 cores. The script installs all dependencies via `pkg`, clones the source trees, builds Bun's Zig fork, applies patches, and compiles Bun + WebKit/JSC.
+Requires FreeBSD 13.2+ amd64, ~16 GB RAM, ~20 GB disk. The script installs all dependencies via `pkg`, clones the source trees, builds Bun's Zig fork, applies patches, and compiles Bun + WebKit/JSC.
 
 Output: `~/src/bun/build/bun` — a native FreeBSD ELF.
+
+## Running Claude Code
+
+After building, grab `cli.js` from the npm package (while it's still available — Anthropic has said this is being deprecated):
+
+```sh
+mkdir -p ~/.npm-global
+npm config set prefix ~/.npm-global
+npm install -g @anthropic-ai/claude-code
+```
+
+Then run it under your native bun:
+
+```sh
+~/src/bun/build/bun ~/.npm-global/lib/node_modules/@anthropic-ai/claude-code/cli.js --version
+```
+
+For convenience, create a wrapper:
+
+```sh
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/claude <<'EOF'
+#!/bin/sh
+exec ~/src/bun/build/bun ~/.npm-global/lib/node_modules/@anthropic-ai/claude-code/cli.js "$@"
+EOF
+chmod +x ~/.local/bin/claude
+```
+
+**Note:** `cli.js` is Anthropic's proprietary code (not included in this repo). Anthropic has stated they plan to deprecate the npm package. This repo only contains the Bun build script and patches — sourcing `cli.js` is on you.
 
 ## What the patches fix
 
