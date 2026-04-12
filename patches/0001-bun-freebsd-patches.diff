@@ -1,0 +1,104 @@
+diff --git a/cmake/tools/SetupWebKit.cmake b/cmake/tools/SetupWebKit.cmake
+index b1e79a5fe..c7e6f1473 100644
+--- a/cmake/tools/SetupWebKit.cmake
++++ b/cmake/tools/SetupWebKit.cmake
+@@ -131,6 +131,11 @@ if(WEBKIT_LOCAL)
+     list(APPEND JSC_CMAKE_ARGS -DCMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER})
+   endif()
+ 
++
++  if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
++    list(APPEND JSC_CMAKE_ARGS -DUSE_SYSTEM_MALLOC=ON)
++  endif()
++
+   execute_process(
+     COMMAND ${CMAKE_COMMAND} ${JSC_CMAKE_ARGS}
+     RESULT_VARIABLE JSC_CONFIGURE_RESULT
+diff --git a/scripts/codegen-ts-node-runner.mjs b/scripts/codegen-ts-node-runner.mjs
+index 167a2dea8..4613c3841 100644
+--- a/scripts/codegen-ts-node-runner.mjs
++++ b/scripts/codegen-ts-node-runner.mjs
+@@ -53,7 +53,7 @@ function parseBunBuildCli(cmd) {
+   let minifySyntax = false;
+   let minify = false;
+   let keepNames = false;
+-  let format = "cjs";
++  let format = "esm";
+ 
+   for (let i = 0; i < args.length; i++) {
+     const arg = args[i];
+@@ -104,6 +104,21 @@ function parseBunBuildCli(cmd) {
+   return { entryPoints, external, define, root, outdir, target, minifySyntax, minify, keepNames, format };
+ }
+ 
++
++function unwrapEsbuildCommonJS(text) {
++  // Strip esbuild's CJS wrapper for plain-script entries and discard helpers.
++  // bundle-modules.ts expects a bare script body with top-level $$EXPORT$$ markers.
++  const m = text.match(/var require_\w+ = __commonJS\(\{\s*"[^"]+"\s*\((?:exports|_exports)(?:,\s*(?:module|_module))?\)\s*\{\n([\s\S]*?)\n\s*\}\n\s*\}\);/);
++  if (!m) return text;
++  let body = m[1].replace(/^\s*\n/, "");
++  // Remove leftover init_define_X() helper calls.
++  body = body.replace(/^\s*init_define_[A-Za-z0-9_]+\(\);\n/gm, "");
++  // Replace __name(identifier, "...") calls with just `identifier` (the helper just sets
++  // Function.name which we don't care about for internal modules).
++  body = body.replace(/__name\(([A-Za-z_$][A-Za-z0-9_$]*),\s*"[^"]*"\)/g, "$1");
++  return body + "\n";
++}
++
+ function bunBuildCompatSync(cmd, cwd) {
+   const esbuild = nodeRequire("esbuild");
+   const parsed = parseBunBuildCli(cmd);
+@@ -114,7 +129,7 @@ function bunBuildCompatSync(cmd, cwd) {
+         bundle: true,
+         // `bundle-modules.ts` wraps output in its own function and expects top-level
+         // `$$EXPORT$$` markers, so avoid iife wrappers and ESM `export` syntax here.
+-        format: parsed.format === "esm" ? "esm" : "cjs",
++        format: "esm",
+         platform: "browser",
+         target: parsed.target,
+         outdir: parsed.outdir,
+@@ -123,12 +138,19 @@ function bunBuildCompatSync(cmd, cwd) {
+         external: parsed.external,
+         minify: parsed.minify,
+         minifySyntax: true,
+-        keepNames: parsed.keepNames,
++        keepNames: false,
+         write: true,
+         logLevel: "silent",
+         legalComments: "none",
+         absWorkingDir: cwd,
+       });
++      for (const entry of parsed.entryPoints) {
++        const rel = path.relative(parsed.root || cwd, entry).replace(/\.[mc]?[tj]sx?$/, ".js");
++        const outPath = path.join(parsed.outdir, rel);
++        if (!fs.existsSync(outPath)) continue;
++        const text = fs.readFileSync(outPath, "utf8");
++        fs.writeFileSync(outPath, unwrapEsbuildCommonJS(text));
++      }
+       return { ok: true, stderr: "", stdout: "" };
+     }
+ 
+@@ -598,6 +620,7 @@ registerTsRequireExtension(".cts", "ts");
+ ${resolveFrom.toString()}
+ ${globScanSync.toString()}
+ ${parseBunBuildCli.toString()}
++${unwrapEsbuildCommonJS.toString()}
+ ${bunBuildCompatSync.toString()}
+ ${createBunCompat.toString()}
+ ${bunCompatSource}
+diff --git a/src/codegen/bundle-functions.ts b/src/codegen/bundle-functions.ts
+index ae6bcd8a3..da0fa2d5f 100644
+--- a/src/codegen/bundle-functions.ts
++++ b/src/codegen/bundle-functions.ts
+@@ -28,9 +28,7 @@ import { applyGlobalReplacements, define } from "./replacements";
+ const PARALLEL = false;
+ const KEEP_TMP = true;
+ 
+-if (import.meta.main) {
+-  throw new Error("This script is not meant to be run directly");
+-}
++// Runtime guard removed for bundled (Node) bootstrap path: esbuild --define:import.meta.main=true constant-folds the check.
+ 
+ const CMAKE_BUILD_ROOT = globalThis.CMAKE_BUILD_ROOT;
+ if (!CMAKE_BUILD_ROOT) {

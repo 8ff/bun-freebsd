@@ -1,0 +1,40 @@
+diff --git a/Source/WTF/wtf/AvailableMemory.cpp b/Source/WTF/wtf/AvailableMemory.cpp
+index afeee1133d..d8b33a5fa1 100644
+--- a/Source/WTF/wtf/AvailableMemory.cpp
++++ b/Source/WTF/wtf/AvailableMemory.cpp
+@@ -44,7 +44,7 @@
+ #import <mach/mach_error.h>
+ #import <math.h>
+ #elif OS(UNIX)
+-#if OS(FREEBSD) || OS(LINUX)
++#if OS(LINUX)
+ #include <sys/sysinfo.h>
+ #endif
+ #if OS(LINUX)
+@@ -165,9 +165,10 @@ static size_t computeAvailableMemory()
+     }
+     return availableMemoryGuess;
+ #elif OS(FREEBSD)
+-    struct sysinfo info;
+-    if (!sysinfo(&info))
+-        return info.totalram * info.mem_unit;
++    uint64_t physmem = 0;
++    size_t len = sizeof(physmem);
++    if (!sysctlbyname("hw.physmem", &physmem, &len, nullptr, 0))
++        return static_cast<size_t>(physmem);
+     return availableMemoryGuess;
+ #elif OS(UNIX) || OS(HAIKU)
+     long pages = sysconf(_SC_PHYS_PAGES);
+diff --git a/Source/WTF/wtf/RAMSize.cpp b/Source/WTF/wtf/RAMSize.cpp
+index 421fc808e0..aade77a655 100644
+--- a/Source/WTF/wtf/RAMSize.cpp
++++ b/Source/WTF/wtf/RAMSize.cpp
+@@ -31,7 +31,7 @@
+ 
+ #if OS(WINDOWS)
+ #include <windows.h>
+-#elif OS(LINUX) || OS(FREEBSD)
++#elif OS(LINUX)
+ #include <sys/sysinfo.h>
+ #elif OS(UNIX) || OS(HAIKU)
+ #include <unistd.h>
