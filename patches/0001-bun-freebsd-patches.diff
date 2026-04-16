@@ -1,19 +1,45 @@
+diff --git a/cmake/targets/BuildLibArchive.cmake b/cmake/targets/BuildLibArchive.cmake
+index 3a7058683..f8e2d1a01 100644
+--- a/cmake/targets/BuildLibArchive.cmake
++++ b/cmake/targets/BuildLibArchive.cmake
+@@ -16,6 +16,7 @@ register_cmake_command(
+     -DENABLE_CAT=OFF
+     -DENABLE_CPIO=OFF
+     -DENABLE_UNZIP=OFF
++    -DENABLE_TAR=OFF
+     -DENABLE_EXPAT=OFF
+     -DENABLE_ICONV=OFF
+     -DENABLE_LIBB2=OFF
 diff --git a/cmake/tools/SetupWebKit.cmake b/cmake/tools/SetupWebKit.cmake
 index b1e79a5fe..c7e6f1473 100644
 --- a/cmake/tools/SetupWebKit.cmake
 +++ b/cmake/tools/SetupWebKit.cmake
-@@ -131,6 +131,11 @@ if(WEBKIT_LOCAL)
+@@ -131,6 +131,12 @@ if(WEBKIT_LOCAL)
      list(APPEND JSC_CMAKE_ARGS -DCMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER})
    endif()
  
 +
 +  if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
 +    list(APPEND JSC_CMAKE_ARGS -DUSE_SYSTEM_MALLOC=ON)
++    list(APPEND JSC_CMAKE_ARGS -DENABLE_API_TESTS=OFF)
 +  endif()
 +
    execute_process(
      COMMAND ${CMAKE_COMMAND} ${JSC_CMAKE_ARGS}
      RESULT_VARIABLE JSC_CONFIGURE_RESULT
+diff --git a/src/js/internal/stream.ts b/src/js/internal/stream.ts
+index 58792eec1..b8a3e7c01 100644
+--- a/src/js/internal/stream.ts
++++ b/src/js/internal/stream.ts
+@@ -10,7 +10,7 @@ const { setDefaultHighWaterMark, getDefaultHighWaterMark } = require("internal/s
+ const { pipeline } = require("internal/streams/pipeline");
+ const { destroyer } = require("internal/streams/destroy");
+ const eos = require("internal/streams/end-of-stream");
+-const promises = require("internal/stream.promises");
++const promises = require("internal/stream/promises");
+ const utils = require("internal/streams/utils");
+ const { isArrayBufferView, isUint8Array } = require("node:util/types");
+ const Stream = require("internal/streams/legacy").Stream;
 diff --git a/scripts/codegen-ts-node-runner.mjs b/scripts/codegen-ts-node-runner.mjs
 index 167a2dea8..4613c3841 100644
 --- a/scripts/codegen-ts-node-runner.mjs

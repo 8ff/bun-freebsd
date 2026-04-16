@@ -157,7 +157,12 @@ cmake .. -G Ninja \
   -DZIG_EXECUTABLE="$HOME/bun-zig-install/bin/zig"
 
 say "Building (~15 min on 16 cores)"
-ninja -j "$(sysctl -n hw.ncpu)" all
+# Ninja may fail on the first attempt due to transient configure races in
+# ExternalProject sub-builds (e.g. c-ares).  Retry once before giving up.
+if ! ninja -j "$(sysctl -n hw.ncpu)" all; then
+  warn "First ninja run failed – retrying (often fixes transient ExternalProject failures)"
+  ninja -j "$(sysctl -n hw.ncpu)" all
+fi
 
 # --- Verify ---
 
