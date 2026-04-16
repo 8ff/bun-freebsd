@@ -102,3 +102,16 @@ index ae6bcd8a3..da0fa2d5f 100644
  
  const CMAKE_BUILD_ROOT = globalThis.CMAKE_BUILD_ROOT;
  if (!CMAKE_BUILD_ROOT) {
+diff --git a/src/js/internal/stream.ts b/src/js/internal/stream.ts
+index 278fb89a7..ea7676a9f 100644
+--- a/src/js/internal/stream.ts
++++ b/src/js/internal/stream.ts
+@@ -9,7 +9,7 @@ const { setDefaultHighWaterMark, getDefaultHighWaterMark } = require("internal
+ const { pipeline } = require("internal/streams/pipeline");
+ const { destroyer } = require("internal/streams/destroy");
+ const eos = require("internal/streams/end-of-stream");
+-const promises = require("internal/stream.promises");
++const promises = require("internal/stream/promises");
+ const utils = require("internal/streams/utils");
+ const { isArrayBufferView, isUint8Array } = require("node:util/types");
+ const Stream = require("internal/streams/legacy").Stream;

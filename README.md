@@ -53,6 +53,9 @@ chmod +x ~/.local/bin/claude
 - **`codegen-ts-node-runner.mjs`** — fix esbuild output format for Node bootstrap: strip `__commonJS` wrapper, remove `init_define_*` no-ops, disable `keepNames` to avoid `__name()` helper
 - **`bundle-functions.ts`** — remove `if (import.meta.main)` guard that esbuild's `--define` constant-folds to `if (true)` in bundled output
 - **`glob-sources-node.mjs`** (new) — Node port of Bun-requiring `glob-sources.mjs` for bootstrap on hosts without an existing Bun binary
+- **`stream.ts`** — fix internal module import typo: `internal/stream.promises` → `internal/stream/promises`
+- **WebKit `Tools/CMakeLists.txt`** — skip `TestWebKitAPI` on FreeBSD to avoid nonessential API test build failures
+- **`build.sh`** — add one-shot retry with known FreeBSD workarounds for `cares`/`libarchive` build failures (`-lz` for `bsdtar`)
 
 ## Credit
 

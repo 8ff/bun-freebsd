@@ -30,6 +30,39 @@ say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!!\033[0m %s\n' "$*" >&2; }
 fail() { printf '\033[1;31mxxx\033[0m %s\n' "$*" >&2; exit 1; }
 
+patch_libarchive_lz() {
+  ninja_file="$1"
+  [ -f "$ninja_file" ] || return 0
+
+  tmp_ninja="$(mktemp /tmp/bun-libarchive-build.ninja.XXXXXX)"
+  changed_flag="$(mktemp /tmp/bun-libarchive-build.changed.XXXXXX)"
+
+  awk -v changed_flag="$changed_flag" '
+    BEGIN { in_bsdtar = 0; changed = 0 }
+    /^# Link the executable bin\/bsdtar$/ { in_bsdtar = 1; print; next }
+    in_bsdtar && /^  FLAGS = / {
+      if (index($0, " -lz") == 0) {
+        print $0 " -lz"
+        changed = 1
+      } else {
+        print
+      }
+      in_bsdtar = 0
+      next
+    }
+    { print }
+    END { if (changed) print "1" > changed_flag }
+  ' "$ninja_file" > "$tmp_ninja"
+
+  if [ -s "$changed_flag" ]; then
+    mv "$tmp_ninja" "$ninja_file"
+    say "Applied libarchive bsdtar -lz workaround"
+  else
+    rm -f "$tmp_ninja"
+  fi
+  rm -f "$changed_flag"
+}
+
 # --- Sanity ---
 
 [ "$(uname -s)" = "FreeBSD" ] || fail "FreeBSD only. Got: $(uname -s)"
@@ -157,7 +190,12 @@ cmake .. -G Ninja \
   -DZIG_EXECUTABLE="$HOME/bun-zig-install/bin/zig"
 
 say "Building (~15 min on 16 cores)"
-ninja -j "$(sysctl -n hw.ncpu)" all
+if ! ninja -j "$(sysctl -n hw.ncpu)" all; then
+  warn "Initial build failed; retrying once with known FreeBSD workarounds"
+  [ -d cares ] && ( cd cares && ninja -j "$(sysctl -n hw.ncpu)" ) || true
+  patch_libarchive_lz "$PWD/libarchive/build.ninja"
+  ninja -j "$(sysctl -n hw.ncpu)" all
+fi
 
 # --- Verify ---
 

@@ -38,3 +38,15 @@ index 421fc808e0..aade77a655 100644
  #include <sys/sysinfo.h>
  #elif OS(UNIX) || OS(HAIKU)
  #include <unistd.h>
+diff --git a/Tools/CMakeLists.txt b/Tools/CMakeLists.txt
+index 7f68bf0732d..1f35a632220 100644
+--- a/Tools/CMakeLists.txt
++++ b/Tools/CMakeLists.txt
+@@ -19,6 +19,6 @@ if (ENABLE_LAYOUT_TESTS)
+     endif ()
+ endif ()
+ 
+-if (ENABLE_API_TESTS)
++if (ENABLE_API_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+     add_subdirectory(TestWebKitAPI)
+ endif ()
