@@ -114,6 +114,7 @@ apply_once() {
 
 apply_once "$PATCHES_DIR/0001-bun-freebsd-patches.diff"    "$BUILD_ROOT/bun"              1
 apply_once "$PATCHES_DIR/0002-webkit-freebsd-patches.diff" "$BUILD_ROOT/bun/vendor/WebKit" 2
+apply_once "$PATCHES_DIR/0003-bun-js-bundler-plugin-patches.diff" "$BUILD_ROOT/bun" 3
 
 install -m 644 "$PATCHES_DIR/glob-sources-node.mjs" "$BUILD_ROOT/bun/scripts/glob-sources-node.mjs"
 
